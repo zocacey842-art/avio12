@@ -129,9 +129,9 @@
         }
 
         .plane-svg-icon {
-            width: 80px;
+            width: 100px;
             fill: var(--accent-red);
-            transform: rotate(-5deg);
+            transform: rotate(5deg);
         }
 
         .canvas-overlay {
@@ -310,8 +310,19 @@
 
         <div id="plane-container" style="top: 40px; bottom: auto;">
             <div id="plane">
-                <svg class="plane-svg-icon" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M504.1 270.5c9.1-10.7 10.3-26.1 2.8-38.2l-21.7-35.1c-6.8-11-19.5-16.7-32.2-14.2l-117.8 23.6L242.4 24.3c-6.6-9.1-17.2-14.3-28.3-14.3h-34.9c-15.6 0-26.6 15.3-21.3 29.9L223.7 192l-98.3 19.7-44.6-64.8c-6.3-9.2-16.8-14.8-28.1-14.8H18.3C8.2 132.1 0 140.3 0 150.4c0 4.1 1.4 8.1 3.9 11.3l61.2 81.6L3.9 324.9c-2.5 3.3-3.9 7.2-3.9 11.3 0 10.1 8.2 18.3 18.3 18.3h34.4c11.3 0 21.8-5.7 28.1-14.8l44.6-64.8 98.3 19.7-65.7 152.1c-5.3 14.6 5.7 29.9 21.3 29.9h34.9c11.1 0 21.7-5.2 28.3-14.3l92.8-127.1L453 358.8c12.7 2.5 25.4-3.1 32.2-14.2l21.7-35.1c7.5-12.1 6.3-27.5-2.8-38.2l-15.4-18.1 15.4-18.1z"/>
+                <svg class="plane-svg-icon" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Fuselage -->
+                    <path d="M20 25 Q 40 15, 80 25 L 85 22 L 85 28 L 80 25 Q 40 35, 20 25" fill="#ff0044" />
+                    <!-- Propeller/Front -->
+                    <rect x="85" y="15" width="2" height="20" fill="#ff0044" rx="1" />
+                    <circle cx="86" cy="25" r="3" fill="#ff0044" />
+                    <!-- Tail -->
+                    <path d="M20 25 L 5 15 L 5 25 L 20 25" fill="#ff0044" />
+                    <path d="M20 25 L 10 35 L 15 25" fill="#ff0044" />
+                    <!-- Wing -->
+                    <path d="M40 25 L 30 15 L 50 15 L 60 25" fill="#ff0044" />
+                    <!-- "X" Detail on fuselage -->
+                    <text x="65" y="26" font-family="Arial" font-size="8" font-weight="bold" fill="white" transform="rotate(10, 65, 26)">X</text>
                 </svg>
             </div>
         </div>
