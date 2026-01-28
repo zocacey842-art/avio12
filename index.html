@@ -452,14 +452,16 @@
                 isGameRunning = true;
                 gameStartTime = Date.now();
                 
-                if (hasBetPlaced) {
-                    document.getElementById('bet-btn').style.display = 'none';
-                    document.getElementById('cashout-btn').style.display = 'flex';
-                }
-                
+                document.getElementById('bet-btn').style.display = 'none';
                 document.getElementById('bet-amount').disabled = true;
                 document.querySelectorAll('.preset-btn').forEach(b => b.disabled = true);
-                document.getElementById('game-status').innerText = "Plane is airborne...";
+                
+                if (hasBetPlaced) {
+                    document.getElementById('cashout-btn').style.display = 'flex';
+                    document.getElementById('game-status').innerText = "Plane is airborne... Cash out now!";
+                } else {
+                    document.getElementById('game-status').innerText = "Plane is airborne... Wait for next round to bet.";
+                }
             }
             
             multiplier = data.multiplier;
@@ -541,7 +543,7 @@
     }
 
     function placeBet() {
-        if (hasBetPlaced) return;
+        if (hasBetPlaced || isGameRunning) return;
         
         currentBet = parseFloat(document.getElementById('bet-amount').value);
         
@@ -558,13 +560,7 @@
         document.getElementById('bet-amount').disabled = true;
         document.querySelectorAll('.preset-btn').forEach(b => b.disabled = true);
         
-        if (isGameRunning) {
-            document.getElementById('cashout-btn').style.display = 'flex';
-            document.getElementById('cashout-amount').innerText = (currentBet * multiplier).toFixed(2) + " USD";
-            document.getElementById('game-status').innerText = "Bet placed! Cash out before it crashes!";
-        } else {
-            document.getElementById('game-status').innerText = `Bet placed: ${currentBet.toFixed(2)} USD - Waiting for round...`;
-        }
+        document.getElementById('game-status').innerText = `Bet placed: ${currentBet.toFixed(2)} USD - Waiting for round...`;
     }
 
     function cashOut() {
