@@ -115,7 +115,7 @@
 
         #plane-container {
             position: absolute;
-            top: 40px;
+            bottom: 40px;
             left: 40px;
             z-index: 8;
             transition: transform 0.1s linear;
@@ -131,7 +131,7 @@
         .plane-svg-icon {
             width: 100px;
             fill: var(--accent-red);
-            transform: rotate(5deg);
+            transform: rotate(-15deg);
         }
 
         .canvas-overlay {
@@ -308,7 +308,7 @@
             <path d="" fill="rgba(255,0,68,0.2)" stroke="#ff0044" stroke-width="4" id="trace-path" />
         </svg>
 
-        <div id="plane-container" style="top: 40px; bottom: auto;">
+        <div id="plane-container">
             <div id="plane">
                 <svg class="plane-svg-icon" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">
                     <!-- Fuselage -->
@@ -510,13 +510,13 @@
             document.getElementById('multiplier').innerText = multiplier.toFixed(2) + "x";
             document.getElementById('cashout-amount').innerText = (currentBet * multiplier).toFixed(2) + " USD";
 
-            // Improved Plane position & Trace: Parabolic curve starting from top
+            // Improved Plane position & Trace: Parabolic curve starting from bottom
             const x = Math.min(elapsed * 50, stageWidth);
-            const y = Math.min((multiplier - 1) * 45, stageHeight);
+            const y = -Math.min((multiplier - 1) * 45, stageHeight);
             
             plane.style.transform = `translate(${x}px, ${y}px)`;
             
-            // Draw a smooth quadratic curve for the trace starting from top
+            // Draw a smooth quadratic curve for the trace starting from bottom
             path.setAttribute('d', `M 0 0 Q ${x * 0.4} 0, ${x} ${y} L ${x} 0 L 0 0 Z`);
 
             if (multiplier >= crashPoint) {
