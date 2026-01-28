@@ -373,7 +373,7 @@
                         <button class="preset-btn" onclick="setBet(10)">10</button>
                     </div>
                 </div>
-                <button id="bet-btn" class="action-btn btn-bet" onclick="startGame()">
+                <button id="bet-btn" class="action-btn btn-bet" onclick="placeBet()">
                     BET
                     <span style="font-size: 0.8rem; font-weight: normal;"><span class="current-bet-val">1.00</span> USD</span>
                 </button>
@@ -394,6 +394,7 @@
     let crashPoint;
     let isGameRunning = false;
     let isWaitingForNextRound = false;
+    let hasBetPlaced = false;
     let currentBet = 0;
     let nextBet = 1.00;
     let history = [1.31, 2.54, 1.05, 5.10];
@@ -413,7 +414,7 @@
     }
 
     function adjustBet(dir) {
-        if (isGameRunning) return;
+        if (isGameRunning || hasBetPlaced) return;
         let val = parseFloat(document.getElementById('bet-amount').value);
         val = Math.max(0.1, val + (dir * 0.1));
         document.getElementById('bet-amount').value = val.toFixed(2);
@@ -421,7 +422,7 @@
     }
 
     function setBet(val) {
-        if (isGameRunning) return;
+        if (isGameRunning || hasBetPlaced) return;
         document.getElementById('bet-amount').value = val.toFixed(2);
         updateBetDisplay();
     }
@@ -433,8 +434,8 @@
     }
 
     async function generateCrashPoint() {
-        const houseEdge = 0.04; // 4% House Edge for better balance
-        const instantCrashChance = 0.01; // 1% chance to crash at exactly 1.00
+        const houseEdge = 0.04;
+        const instantCrashChance = 0.01;
         
         if (Math.random() < instantCrashChance) return "1.00";
 
@@ -448,53 +449,69 @@
         const hashInt = parseInt(hashHex.substring(0, 13), 16);
         const e = Math.pow(2, 52);
         
-        // standard provably fair formula: (100 * e - h) / (e - h)
-        // adjusted with 0.96 multiplier to apply house edge consistently
         let result = Math.floor(0.96 * ((100 * e - hashInt) / (e - hashInt))) / 100.0;
         
-        // ensure minimum is 1.00 and round to 2 decimals
         return Math.max(1.00, result).toFixed(2);
     }
 
-    function startWaitingPeriod() {
-        isWaitingForNextRound = true;
-        isGameRunning = false;
-        let secondsLeft = 7;
+    function placeBet() {
+        if (isGameRunning || hasBetPlaced) return;
         
-        document.getElementById('bet-btn').disabled = false;
-        document.getElementById('bet-amount').disabled = false;
-        document.querySelectorAll('.preset-btn').forEach(b => b.disabled = false);
-        
-        document.getElementById('multiplier').style.display = 'block';
-        document.getElementById('multiplier').style.color = 'white';
-        document.getElementById('flew-away').style.display = 'none';
-        
-        countdownTimer = setInterval(() => {
-            document.getElementById('multiplier').innerText = `NEXT ROUND IN ${secondsLeft}s`;
-            document.getElementById('game-status').innerText = `Waiting for bets... (${secondsLeft}s)`;
-            
-            if (secondsLeft <= 0) {
-                clearInterval(countdownTimer);
-                startGame();
-            }
-            secondsLeft--;
-        }, 1000);
-    }
-
-    function startGame() {
-        if (isGameRunning) return;
-        isWaitingForNextRound = false;
         currentBet = parseFloat(document.getElementById('bet-amount').value);
         
         if (currentBet > balance) {
-            document.getElementById('game-status').innerText = "Insufficient balance! Waiting for next round...";
-            setTimeout(startWaitingPeriod, 2000);
+            document.getElementById('game-status').innerText = "Insufficient balance!";
             return;
         }
 
         balance -= currentBet;
         updateBalance();
+        hasBetPlaced = true;
+        
+        document.getElementById('bet-btn').style.display = 'none';
+        document.getElementById('bet-amount').disabled = true;
+        document.querySelectorAll('.preset-btn').forEach(b => b.disabled = true);
+        
+        document.getElementById('game-status').innerText = `Bet placed: ${currentBet.toFixed(2)} USD - Waiting for round to start...`;
+        
+        startCountdown();
+    }
 
+    function startCountdown() {
+        if (countdownTimer) clearInterval(countdownTimer);
+        
+        isWaitingForNextRound = true;
+        let secondsLeft = 7;
+        
+        document.getElementById('multiplier').style.display = 'block';
+        document.getElementById('multiplier').style.color = 'white';
+        document.getElementById('flew-away').style.display = 'none';
+        
+        document.getElementById('multiplier').innerText = `STARTING IN ${secondsLeft}s`;
+        
+        countdownTimer = setInterval(() => {
+            secondsLeft--;
+            if (secondsLeft <= 0) {
+                clearInterval(countdownTimer);
+                countdownTimer = null;
+                startGameRound();
+            } else {
+                document.getElementById('multiplier').innerText = `STARTING IN ${secondsLeft}s`;
+                document.getElementById('game-status').innerText = `Round starting in ${secondsLeft}s...`;
+            }
+        }, 1000);
+    }
+
+    function startGameRound() {
+        if (isGameRunning) return;
+        
+        if (!hasBetPlaced) {
+            document.getElementById('game-status').innerText = "Place a bet to play!";
+            document.getElementById('bet-btn').style.display = 'flex';
+            return;
+        }
+        
+        isWaitingForNextRound = false;
         isGameRunning = true;
         multiplier = 1.00;
         updateUIForStart();
@@ -592,11 +609,13 @@
             document.getElementById('flew-away').style.display = 'none';
             document.getElementById('multiplier').style.display = 'block';
             
-            // Unlock controls
+            hasBetPlaced = false;
+            isWaitingForNextRound = false;
+            
             document.getElementById('bet-amount').disabled = false;
             document.querySelectorAll('.preset-btn').forEach(b => b.disabled = false);
             
-            startWaitingPeriod();
+            document.getElementById('game-status').innerText = "Place your bet to start the next round!";
         }, 3000);
     }
 
@@ -621,11 +640,10 @@
         });
     }
 
-    // Auto-start game cycle
     window.onload = () => {
         renderHistory();
         updateBetDisplay();
-        startWaitingPeriod();
+        document.getElementById('game-status').innerText = "Place your bet to start!";
     };
 </script>
 
