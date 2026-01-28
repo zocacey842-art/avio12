@@ -322,8 +322,11 @@
     let gameInterval;
     let crashPoint;
     let isGameRunning = false;
+    let isWaitingForNextRound = false;
     let currentBet = 0;
+    let nextBet = 1.00;
     let history = [1.31, 2.54, 1.05, 5.10];
+    let countdownTimer;
 
     // Initialize Grid
     const grid = document.getElementById('grid-container');
@@ -339,6 +342,7 @@
     }
 
     function adjustBet(dir) {
+        if (isGameRunning) return;
         let val = parseFloat(document.getElementById('bet-amount').value);
         val = Math.max(0.1, val + (dir * 0.1));
         document.getElementById('bet-amount').value = val.toFixed(2);
@@ -346,12 +350,14 @@
     }
 
     function setBet(val) {
+        if (isGameRunning) return;
         document.getElementById('bet-amount').value = val.toFixed(2);
         updateBetDisplay();
     }
 
     function updateBetDisplay() {
         const val = document.getElementById('bet-amount').value;
+        nextBet = parseFloat(val);
         document.querySelectorAll('.current-bet-val').forEach(el => el.innerText = val);
     }
 
@@ -371,11 +377,39 @@
         return Math.max(1.01, result).toFixed(2);
     }
 
+    function startWaitingPeriod() {
+        isWaitingForNextRound = true;
+        isGameRunning = false;
+        let secondsLeft = 7;
+        
+        document.getElementById('bet-btn').disabled = false;
+        document.getElementById('bet-amount').disabled = false;
+        document.querySelectorAll('.preset-btn').forEach(b => b.disabled = false);
+        
+        document.getElementById('multiplier').style.display = 'block';
+        document.getElementById('multiplier').style.color = 'white';
+        document.getElementById('flew-away').style.display = 'none';
+        
+        countdownTimer = setInterval(() => {
+            document.getElementById('multiplier').innerText = `NEXT ROUND IN ${secondsLeft}s`;
+            document.getElementById('game-status').innerText = `Waiting for bets... (${secondsLeft}s)`;
+            
+            if (secondsLeft <= 0) {
+                clearInterval(countdownTimer);
+                startGame();
+            }
+            secondsLeft--;
+        }, 1000);
+    }
+
     function startGame() {
         if (isGameRunning) return;
+        isWaitingForNextRound = false;
         currentBet = parseFloat(document.getElementById('bet-amount').value);
+        
         if (currentBet > balance) {
-            alert("Insufficient balance!");
+            document.getElementById('game-status').innerText = "Insufficient balance! Waiting for next round...";
+            setTimeout(startWaitingPeriod, 2000);
             return;
         }
 
@@ -400,6 +434,10 @@
         document.getElementById('multiplier').style.display = 'block';
         document.getElementById('multiplier').style.color = 'white';
         document.getElementById('game-status').innerText = "Plane is airborne...";
+        
+        // Lock controls
+        document.getElementById('bet-amount').disabled = true;
+        document.querySelectorAll('.preset-btn').forEach(b => b.disabled = true);
     }
 
     function runGameLoop() {
@@ -463,6 +501,12 @@
             document.getElementById('multiplier').innerText = "1.00x";
             document.getElementById('flew-away').style.display = 'none';
             document.getElementById('multiplier').style.display = 'block';
+            
+            // Unlock controls
+            document.getElementById('bet-amount').disabled = false;
+            document.querySelectorAll('.preset-btn').forEach(b => b.disabled = false);
+            
+            startWaitingPeriod();
         }, 3000);
     }
 
@@ -472,7 +516,7 @@
 
     function addHistory(val) {
         history.unshift(parseFloat(val));
-        if(history.length > 6) history.pop();
+        if(history.length > 10) history.pop();
         renderHistory();
     }
 
@@ -487,8 +531,12 @@
         });
     }
 
-    renderHistory();
-    updateBetDisplay();
+    // Auto-start game cycle
+    window.onload = () => {
+        renderHistory();
+        updateBetDisplay();
+        startWaitingPeriod();
+    };
 </script>
 
 </body>
