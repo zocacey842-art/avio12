@@ -387,20 +387,19 @@
     <div class="status-msg" id="game-status">Waiting for next round...</div>
 </div>
 
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 <script>
     let balance = 5000.00;
     let multiplier = 1.00;
-    let gameInterval;
-    let crashPoint;
     let isGameRunning = false;
-    let isWaitingForNextRound = false;
     let hasBetPlaced = false;
     let currentBet = 0;
     let nextBet = 1.00;
     let history = [1.31, 2.54, 1.05, 5.10];
-    let countdownTimer;
+    let gameStartTime = null;
+    let animationFrame = null;
+    let socket;
 
-    // Initialize Grid
     const grid = document.getElementById('grid-container');
     for(let i=0; i<10; i++) {
         const v = document.createElement('div');
@@ -411,6 +410,114 @@
         h.className = 'grid-line h-line';
         h.style.top = (i * 10) + '%';
         grid.appendChild(h);
+    }
+
+    function connectSocket() {
+        socket = io();
+        
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+        
+        socket.on('game_state', (data) => {
+            handleGameState(data);
+        });
+    }
+
+    function handleGameState(data) {
+        const phase = data.phase;
+        
+        if (phase === 'countdown') {
+            if (isGameRunning) {
+                resetPlanePosition();
+            }
+            isGameRunning = false;
+            gameStartTime = null;
+            
+            document.getElementById('multiplier').style.display = 'block';
+            document.getElementById('multiplier').style.color = 'white';
+            document.getElementById('flew-away').style.display = 'none';
+            document.getElementById('multiplier').innerText = `${data.countdown}s`;
+            document.getElementById('game-status').innerText = `Round starting in ${data.countdown}s...`;
+            
+            if (!hasBetPlaced) {
+                document.getElementById('bet-btn').style.display = 'flex';
+                document.getElementById('cashout-btn').style.display = 'none';
+                document.getElementById('bet-amount').disabled = false;
+                document.querySelectorAll('.preset-btn').forEach(b => b.disabled = false);
+            }
+            
+        } else if (phase === 'running') {
+            if (!isGameRunning) {
+                isGameRunning = true;
+                gameStartTime = Date.now();
+                
+                if (hasBetPlaced) {
+                    document.getElementById('bet-btn').style.display = 'none';
+                    document.getElementById('cashout-btn').style.display = 'flex';
+                }
+                
+                document.getElementById('bet-amount').disabled = true;
+                document.querySelectorAll('.preset-btn').forEach(b => b.disabled = true);
+                document.getElementById('game-status').innerText = "Plane is airborne...";
+            }
+            
+            multiplier = data.multiplier;
+            document.getElementById('multiplier').style.display = 'block';
+            document.getElementById('multiplier').style.color = 'white';
+            document.getElementById('flew-away').style.display = 'none';
+            document.getElementById('multiplier').innerText = multiplier.toFixed(2) + "x";
+            
+            if (hasBetPlaced) {
+                document.getElementById('cashout-amount').innerText = (currentBet * multiplier).toFixed(2) + " USD";
+            }
+            
+            updatePlanePosition();
+            
+        } else if (phase === 'crashed') {
+            if (hasBetPlaced && isGameRunning) {
+                document.getElementById('game-status').innerText = "Better luck next time!";
+                hasBetPlaced = false;
+                currentBet = 0;
+            }
+            
+            isGameRunning = false;
+            gameStartTime = null;
+            
+            document.getElementById('multiplier').style.display = 'none';
+            document.getElementById('flew-away').style.display = 'block';
+            document.getElementById('cashout-btn').style.display = 'none';
+            
+            addHistory(data.crash_point);
+        }
+    }
+
+    function updatePlanePosition() {
+        if (!gameStartTime) return;
+        
+        const elapsed = (Date.now() - gameStartTime) / 1000;
+        const path = document.getElementById('trace-path');
+        const pathGlow = document.getElementById('trace-path-glow');
+        const plane = document.getElementById('plane-container');
+        const gameStage = document.getElementById('game-stage');
+        const stageWidth = gameStage.clientWidth - 120;
+        const stageHeight = gameStage.clientHeight - 80;
+        
+        const x = Math.min(elapsed * 40, stageWidth);
+        const y = -Math.min(Math.pow(elapsed, 1.5) * 15, stageHeight);
+        const tilt = Math.max(-25, -5 - (elapsed * 2));
+        
+        plane.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg)`;
+        
+        const d = `M 0 0 C ${x * 0.4} 0, ${x * 0.7} ${y * 0.1}, ${x} ${y}`;
+        path.setAttribute('d', d);
+        pathGlow.setAttribute('d', d);
+    }
+
+    function resetPlanePosition() {
+        document.getElementById('plane-container').style.transform = 'translate(0,0) rotate(0deg)';
+        document.getElementById('trace-path').setAttribute('d', '');
+        document.getElementById('trace-path-glow').setAttribute('d', '');
     }
 
     function adjustBet(dir) {
@@ -433,29 +540,8 @@
         document.querySelectorAll('.current-bet-val').forEach(el => el.innerText = val);
     }
 
-    async function generateCrashPoint() {
-        const houseEdge = 0.04;
-        const instantCrashChance = 0.01;
-        
-        if (Math.random() < instantCrashChance) return "1.00";
-
-        const serverSeed = Math.random().toString(36).substring(2) + Date.now().toString(36);
-        const clientSeed = "aviator_" + Math.random().toString(36).substring(2);
-        const encoder = new TextEncoder();
-        const data = encoder.encode(serverSeed + clientSeed);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        const hashInt = parseInt(hashHex.substring(0, 13), 16);
-        const e = Math.pow(2, 52);
-        
-        let result = Math.floor(0.96 * ((100 * e - hashInt) / (e - hashInt))) / 100.0;
-        
-        return Math.max(1.00, result).toFixed(2);
-    }
-
     function placeBet() {
-        if (isGameRunning || hasBetPlaced) return;
+        if (hasBetPlaced) return;
         
         currentBet = parseFloat(document.getElementById('bet-amount').value);
         
@@ -472,151 +558,28 @@
         document.getElementById('bet-amount').disabled = true;
         document.querySelectorAll('.preset-btn').forEach(b => b.disabled = true);
         
-        document.getElementById('game-status').innerText = `Bet placed: ${currentBet.toFixed(2)} USD - Waiting for round to start...`;
-        
-        startCountdown();
-    }
-
-    function startCountdown() {
-        if (countdownTimer) clearInterval(countdownTimer);
-        
-        isWaitingForNextRound = true;
-        let secondsLeft = 7;
-        
-        document.getElementById('multiplier').style.display = 'block';
-        document.getElementById('multiplier').style.color = 'white';
-        document.getElementById('flew-away').style.display = 'none';
-        
-        document.getElementById('multiplier').innerText = `STARTING IN ${secondsLeft}s`;
-        
-        countdownTimer = setInterval(() => {
-            secondsLeft--;
-            if (secondsLeft <= 0) {
-                clearInterval(countdownTimer);
-                countdownTimer = null;
-                startGameRound();
-            } else {
-                document.getElementById('multiplier').innerText = `STARTING IN ${secondsLeft}s`;
-                document.getElementById('game-status').innerText = `Round starting in ${secondsLeft}s...`;
-            }
-        }, 1000);
-    }
-
-    function startGameRound() {
-        if (isGameRunning) return;
-        
-        if (!hasBetPlaced) {
-            document.getElementById('game-status').innerText = "Place a bet to play!";
-            document.getElementById('bet-btn').style.display = 'flex';
-            return;
-        }
-        
-        isWaitingForNextRound = false;
-        isGameRunning = true;
-        multiplier = 1.00;
-        updateUIForStart();
-
-        generateCrashPoint().then(cp => {
-            crashPoint = cp;
-            console.log("Crash at:", crashPoint);
-            runGameLoop();
-        });
-    }
-
-    function updateUIForStart() {
-        document.getElementById('bet-btn').style.display = 'none';
-        document.getElementById('cashout-btn').style.display = 'flex';
-        document.getElementById('flew-away').style.display = 'none';
-        document.getElementById('multiplier').style.display = 'block';
-        document.getElementById('multiplier').style.color = 'white';
-        document.getElementById('game-status').innerText = "Plane is airborne...";
-        
-        // Lock controls
-        document.getElementById('bet-amount').disabled = true;
-        document.querySelectorAll('.preset-btn').forEach(b => b.disabled = true);
-    }
-
-    function runGameLoop() {
-        const startTime = Date.now();
-        const path = document.getElementById('trace-path');
-        const pathGlow = document.getElementById('trace-path-glow');
-        const plane = document.getElementById('plane-container');
-        const gameStage = document.getElementById('game-stage');
-        const stageWidth = gameStage.clientWidth - 120;
-        const stageHeight = gameStage.clientHeight - 80;
-        
-        gameInterval = setInterval(() => {
-            const elapsed = (Date.now() - startTime) / 1000;
-            // Realistic exponential growth
-            multiplier = Math.pow(Math.E, 0.05 * elapsed);
-            
-            document.getElementById('multiplier').innerText = multiplier.toFixed(2) + "x";
+        if (isGameRunning) {
+            document.getElementById('cashout-btn').style.display = 'flex';
             document.getElementById('cashout-amount').innerText = (currentBet * multiplier).toFixed(2) + " USD";
-
-            // Professional parabolic curve: starts slow, accelerates upwards
-            const x = Math.min(elapsed * 40, stageWidth);
-            const y = -Math.min(Math.pow(elapsed, 1.5) * 15, stageHeight);
-            
-            // Add a slight tilt to the container based on velocity
-            const tilt = Math.max(-25, -5 - (elapsed * 2));
-            plane.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg)`;
-            
-            // Draw a smooth quadratic curve for the trace
-            const d = `M 0 0 C ${x * 0.4} 0, ${x * 0.7} ${y * 0.1}, ${x} ${y}`;
-            path.setAttribute('d', d);
-            pathGlow.setAttribute('d', d);
-
-            if (multiplier >= crashPoint) {
-                gameOver();
-            }
-        }, 50);
+            document.getElementById('game-status').innerText = "Bet placed! Cash out before it crashes!";
+        } else {
+            document.getElementById('game-status').innerText = `Bet placed: ${currentBet.toFixed(2)} USD - Waiting for round...`;
+        }
     }
 
     function cashOut() {
-        if (!isGameRunning) return;
+        if (!isGameRunning || !hasBetPlaced) return;
+        
         const winAmount = currentBet * multiplier;
         balance += winAmount;
         updateBalance();
         
-        clearInterval(gameInterval);
-        isGameRunning = false;
+        hasBetPlaced = false;
+        currentBet = 0;
         
+        document.getElementById('cashout-btn').style.display = 'none';
         document.getElementById('multiplier').style.color = "#28a745";
         document.getElementById('game-status').innerText = `WON! +${winAmount.toFixed(2)} USD`;
-        resetGameUI(false);
-    }
-
-    function gameOver() {
-        clearInterval(gameInterval);
-        isGameRunning = false;
-        
-        document.getElementById('multiplier').style.display = 'none';
-        document.getElementById('flew-away').style.display = 'block';
-        document.getElementById('game-status').innerText = "Better luck next time!";
-        
-        addHistory(crashPoint);
-        resetGameUI(true);
-    }
-
-    function resetGameUI(crashed) {
-        document.getElementById('cashout-btn').style.display = 'none';
-        setTimeout(() => {
-            document.getElementById('bet-btn').style.display = 'flex';
-            document.getElementById('plane-container').style.transform = 'translate(0,0) rotate(0deg)';
-            document.getElementById('trace-path').setAttribute('d', '');
-            document.getElementById('trace-path-glow').setAttribute('d', '');
-            document.getElementById('multiplier').innerText = "1.00x";
-            document.getElementById('flew-away').style.display = 'none';
-            document.getElementById('multiplier').style.display = 'block';
-            
-            hasBetPlaced = false;
-            isWaitingForNextRound = false;
-            
-            document.getElementById('bet-amount').disabled = false;
-            document.querySelectorAll('.preset-btn').forEach(b => b.disabled = false);
-            
-            document.getElementById('game-status').innerText = "Place your bet to start the next round!";
-        }, 3000);
     }
 
     function updateBalance() {
@@ -624,7 +587,9 @@
     }
 
     function addHistory(val) {
-        history.unshift(parseFloat(val));
+        const parsed = parseFloat(val);
+        if (isNaN(parsed) || parsed <= 0) return;
+        history.unshift(parsed);
         if(history.length > 10) history.pop();
         renderHistory();
     }
@@ -643,7 +608,8 @@
     window.onload = () => {
         renderHistory();
         updateBetDisplay();
-        document.getElementById('game-status').innerText = "Place your bet to start!";
+        connectSocket();
+        document.getElementById('game-status').innerText = "Connecting to server...";
     };
 </script>
 
