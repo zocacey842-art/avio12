@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aviator - Crash Game</title>
+    <style>
+        body { background-color: #0b0b0b; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .aviator-wrapper { width: 90%; max-width: 600px; background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        
+        /* የጨዋታው ሜዳ */
+        .game-area { height: 250px; background: radial-gradient(circle, #222, #000); border-radius: 15px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #222; }
+        #multiplier { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; font-weight: 800; color: white; z-index: 10; }
+        
+        /* አውሮፕላኗ */
+        #plane { position: absolute; bottom: 20px; left: 20px; font-size: 40px; transition: all 0.1s linear; z-index: 5; }
+        
+        /* መቆጣጠሪያዎች */
+        .controls { display: flex; gap: 15px; background: #252525; padding: 20px; border-radius: 15px; }
+        .input-group { flex: 1; }
+        input { width: 100%; background: #000; border: 1px solid #444; color: #ff0044; padding: 12px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
+        
+        button { width: 100%; padding: 15px; border-radius: 12px; border: none; font-size: 1.2rem; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+        #bet-btn { background: #28a745; color: white; }
+        #bet-btn:hover { background: #218838; }
+        #cashout-btn { background: #ffc107; color: black; display: none; }
+        #cashout-btn:hover { background: #e0a800; }
+
+        .status { text-align: center; margin-top: 10px; color: #888; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+<div class="aviator-wrapper">
+    <div class="game-area">
+        <div id="multiplier">1.00x</div>
+        <div id="plane">✈️</div>
+    </div>
+
+    <div class="controls">
+        <div class="input-group">
+            <input type="number" id="bet-amount" value="10" min="1">
+            <button id="bet-btn" onclick="startGame()">BET</button>
+            <button id="cashout-btn" onclick="cashOut()">CASH OUT</button>
+        </div>
+    </div>
+    <div class="status" id="game-status">የመወራረጃ መጠን ያስገቡና BET ይጫኑ</div>
+</div>
+
+<script>
+    let multiplier = 1.00;
+    let gameInterval;
+    let crashPoint;
+    let isGameRunning = false;
+    let currentBet = 0;
+
+    // 1. ክራሽ ፖይንት ማመንጫ (Provably Fair Algorithm)
+    function generateCrashPoint() {
+        const houseEdge = 0.03; // 3% የቤቱ ትርፍ (ይህ ማለት 3% ጊዜ ወዲያውኑ 1.00x ላይ ይበላል)
+        const rand = Math.random();
+        
+        if (rand < houseEdge) return 1.00;
+
+        // የክራሽ ቀመር፡ 97 / (100 - random_number)
+        // ይህ ቀመር ትላልቅ ቁጥሮች (ለምሳሌ 100x) የመምጣት ዕድላቸው ዝቅተኛ እንዲሆን ያደርጋል
+        const result = (97 / (100 - (Math.random() * 99))).toFixed(2);
+        return Math.max(1.01, result);
+    }
+
+    // 2. ጨዋታውን ለመጀመር
+    function startGame() {
+        if (isGameRunning) return;
+
+        currentBet = parseFloat(document.getElementById('bet-amount').value);
+        if (currentBet <= 0 || isNaN(currentBet)) {
+            alert("እባክዎ ትክክለኛ የገንዘብ መጠን ያስገቡ!");
+            return;
+        }
+
+        // ዝግጅት
+        isGameRunning = true;
+        multiplier = 1.00;
+        crashPoint = generateCrashPoint();
+        console.log("Secret Crash Point: " + crashPoint); // ለሙከራ ብቻ ኮንሶል ላይ ማየት ትችላለህ
+
+        document.getElementById('bet-btn').style.display = 'none';
+        document.getElementById('cashout-btn').style.display = 'block';
+        document.getElementById('multiplier').style.color = 'white';
+        document.getElementById('game-status').innerText = "አውሮፕላኑ እየበረረ ነው...";
+
+        // የሩጫ ጊዜ (Animation)
+        gameInterval = setInterval(() => {
+            multiplier += 0.01;
+            document.getElementById('multiplier').innerText = multiplier.toFixed(2) + "x";
+
+            // አውሮፕላኗን የማንቀሳቀስ ስራ
+            const plane = document.getElementById('plane');
+            let xPos = (multiplier - 1) * 50; // ወደ ቀኝ
+            let yPos = (multiplier - 1) * 30; // ወደ ላይ
+            plane.style.transform = `translate(${xPos}px, -${yPos}px)`;
+
+            // ክራሽ ካደረገ
+            if (multiplier >= crashPoint) {
+                gameOver();
+            }
+        }, 80); // ፍጥነቱን እዚህ ማስተካከል ትችላለህ
+    }
+
+    // 3. ገንዘብ ለማውጣት (Cash Out)
+    function cashOut() {
+        if (!isGameRunning) return;
+
+        const winAmount = (currentBet * multiplier).toFixed(2);
+        clearInterval(gameInterval);
+        isGameRunning = false;
+
+        document.getElementById('multiplier').style.color = "#28a745";
+        document.getElementById('game-status').innerText = "አሸንፈዋል! " + winAmount + " ETB";
+        
+        resetUI();
+    }
+
+    // 4. አውሮፕላኑ ሲያመልጥ (Crash)
+    function gameOver() {
+        clearInterval(gameInterval);
+        isGameRunning = false;
+
+        document.getElementById('multiplier').innerText = "FLEW AWAY!";
+        document.getElementById('multiplier').style.color = "#ff0044";
+        document.getElementById('game-status').innerText = "ተበልተዋል! አውሮፕላኑ አምልጧል።";
+
+        resetUI();
+    }
+
+    // 5. በተኖችን ወደ ነበሩበት መመለስ
+    function resetUI() {
+        setTimeout(() => {
+            document.getElementById('bet-btn').style.display = 'block';
+            document.getElementById('cashout-btn').style.display = 'none';
+            if (!isGameRunning) {
+                const plane = document.getElementById('plane');
+                plane.style.transform = `translate(0px, 0px)`;
+            }
+        }, 3000);
+    }
+</script>
+
+</body>
+</html>
