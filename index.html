@@ -3,161 +3,492 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aviator - Crash Game</title>
+    <title>Aviator - Professional Crash Game</title>
     <style>
-        body { background-color: #0b0b0b; color: white; font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .aviator-wrapper { width: 90%; max-width: 600px; background: #1a1a1a; padding: 20px; border-radius: 20px; border: 1px solid #333; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        
-        /* የጨዋታው ሜዳ */
-        .game-area { height: 250px; background: radial-gradient(circle, #222, #000); border-radius: 15px; position: relative; overflow: hidden; margin-bottom: 20px; border: 1px solid #222; }
-        #multiplier { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 4rem; font-weight: 800; color: white; z-index: 10; }
-        
-        /* አውሮፕላኗ */
-        #plane { position: absolute; bottom: 20px; left: 20px; font-size: 40px; transition: all 0.1s linear; z-index: 5; }
-        
-        /* መቆጣጠሪያዎች */
-        .controls { display: flex; gap: 15px; background: #252525; padding: 20px; border-radius: 15px; }
-        .input-group { flex: 1; }
-        input { width: 100%; background: #000; border: 1px solid #444; color: #ff0044; padding: 12px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; margin-bottom: 10px; }
-        
-        button { width: 100%; padding: 15px; border-radius: 12px; border: none; font-size: 1.2rem; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
-        #bet-btn { background: #28a745; color: white; }
-        #bet-btn:hover { background: #218838; }
-        #cashout-btn { background: #ffc107; color: black; display: none; }
-        #cashout-btn:hover { background: #e0a800; }
+        :root {
+            --bg-dark: #0b0b0b;
+            --panel-bg: #1a1a1a;
+            --control-bg: #252525;
+            --accent-red: #ff0044;
+            --accent-green: #28a745;
+            --accent-yellow: #ffc107;
+            --text-muted: #888;
+        }
 
-        .status { text-align: center; margin-top: 10px; color: #888; font-size: 0.9rem; }
+        body { 
+            background-color: var(--bg-dark); 
+            color: white; 
+            font-family: 'Inter', 'Segoe UI', sans-serif; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+            padding: 10px;
+        }
+
+        .header {
+            width: 100%;
+            max-width: 600px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+        }
+
+        .brand { color: var(--accent-red); font-size: 1.5rem; font-weight: 800; font-style: italic; }
+        .balance { color: var(--accent-green); font-weight: bold; font-size: 1.1rem; }
+
+        .aviator-wrapper { 
+            width: 100%; 
+            max-width: 600px; 
+            background: var(--panel-bg); 
+            border-radius: 15px; 
+            overflow: hidden;
+            border: 1px solid #333;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .history {
+            display: flex;
+            gap: 8px;
+            padding: 8px 15px;
+            background: #141414;
+            overflow-x: auto;
+            border-bottom: 1px solid #222;
+        }
+
+        .history-item {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .history-low { color: #9d50ff; background: rgba(157, 80, 255, 0.1); }
+        .history-mid { color: #28a745; background: rgba(40, 167, 69, 0.1); }
+
+        .game-area { 
+            height: 300px; 
+            background: radial-gradient(circle at bottom left, #1e0505 0%, #000 70%); 
+            position: relative; 
+            overflow: hidden; 
+        }
+
+        .grid-line {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.03);
+        }
+        .v-line { width: 1px; height: 100%; top: 0; }
+        .h-line { height: 1px; width: 100%; left: 0; }
+
+        #multiplier { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            font-size: 5rem; 
+            font-weight: 900; 
+            color: white; 
+            z-index: 10; 
+            text-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        #plane-container {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            z-index: 5;
+            transition: transform 0.1s linear;
+        }
+
+        #plane { font-size: 45px; transform: rotate(-5deg); filter: drop-shadow(0 0 10px rgba(255,0,68,0.5)); }
+
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 4;
+        }
+
+        .bet-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 15px;
+            background: #141414;
+        }
+
+        .bet-card {
+            background: #202020;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+
+        .bet-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 5px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+        }
+        .tab.active { color: white; border-bottom-color: var(--accent-red); }
+
+        .bet-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .input-box {
+            background: #141414;
+            border: 1px solid #333;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 5px 10px;
+            flex: 1;
+        }
+
+        .input-box button {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 0 5px;
+        }
+
+        .input-box input {
+            width: 100%;
+            background: none;
+            border: none;
+            color: white;
+            text-align: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            outline: none;
+        }
+
+        .presets {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .preset-btn {
+            background: #141414;
+            border: 1px solid #333;
+            color: white;
+            padding: 5px;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .action-btn {
+            flex: 1.5;
+            height: 80px;
+            border-radius: 12px;
+            border: none;
+            font-size: 1.3rem;
+            font-weight: 900;
+            cursor: pointer;
+            text-transform: uppercase;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: 0.2s;
+        }
+
+        .btn-bet { background: #28a745; box-shadow: 0 4px 0 #1e7e34; }
+        .btn-bet:hover { background: #218838; }
+        .btn-bet:active { transform: translateY(2px); box-shadow: 0 2px 0 #1e7e34; }
+
+        .btn-cashout { background: #ffc107; color: black; box-shadow: 0 4px 0 #d39e00; display: none; }
+        .btn-cashout .sub { font-size: 0.9rem; font-weight: normal; }
+
+        .status-msg {
+            text-align: center;
+            padding: 10px;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        #flew-away {
+            position: absolute;
+            top: 40%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--accent-red);
+            font-size: 2.5rem;
+            font-weight: 900;
+            display: none;
+            z-index: 11;
+        }
+
+        svg#graph-line {
+            position: absolute;
+            bottom: 40px;
+            left: 40px;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
+<div class="header">
+    <div class="brand">Aviator</div>
+    <div class="balance"><span id="user-balance">5000.00</span> USD</div>
+</div>
+
 <div class="aviator-wrapper">
-    <div class="game-area">
-        <div id="multiplier">1.00x</div>
-        <div id="plane">✈️</div>
+    <div class="history" id="history-list">
+        <span class="history-item history-low">1.31x</span>
+        <span class="history-item history-mid">2.54x</span>
+        <span class="history-item history-low">1.05x</span>
+        <span class="history-item history-mid">5.10x</span>
     </div>
 
-    <div class="controls">
-        <div class="input-group">
-            <input type="number" id="bet-amount" value="10" min="1">
-            <button id="bet-btn" onclick="startGame()">BET</button>
-            <button id="cashout-btn" onclick="cashOut()">CASH OUT</button>
+    <div class="game-area" id="game-stage">
+        <!-- Grid -->
+        <div id="grid-container"></div>
+        
+        <div id="multiplier">1.00x</div>
+        <div id="flew-away">FLEW AWAY!</div>
+        
+        <svg id="graph-line">
+            <path d="" fill="rgba(255,0,68,0.2)" stroke="#ff0044" stroke-width="4" id="trace-path" />
+        </svg>
+
+        <div id="plane-container">
+            <div id="plane">✈️</div>
         </div>
     </div>
-    <div class="status" id="game-status">የመወራረጃ መጠን ያስገቡና BET ይጫኑ</div>
+
+    <div class="bet-sections">
+        <div class="bet-card">
+            <div class="bet-tabs">
+                <div class="tab active">Bet</div>
+                <div class="tab">Auto</div>
+            </div>
+            <div class="bet-controls">
+                <div style="flex: 1;">
+                    <div class="input-box">
+                        <button onclick="adjustBet(-1)">-</button>
+                        <input type="number" id="bet-amount" value="1.00" step="0.10">
+                        <button onclick="adjustBet(1)">+</button>
+                    </div>
+                    <div class="presets">
+                        <button class="preset-btn" onclick="setBet(1)">1</button>
+                        <button class="preset-btn" onclick="setBet(2)">2</button>
+                        <button class="preset-btn" onclick="setBet(5)">5</button>
+                        <button class="preset-btn" onclick="setBet(10)">10</button>
+                    </div>
+                </div>
+                <button id="bet-btn" class="action-btn btn-bet" onclick="startGame()">
+                    BET
+                    <span style="font-size: 0.8rem; font-weight: normal;"><span class="current-bet-val">1.00</span> USD</span>
+                </button>
+                <button id="cashout-btn" class="action-btn btn-cashout" onclick="cashOut()">
+                    CASH OUT
+                    <span class="sub" id="cashout-amount">0.00 USD</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="status-msg" id="game-status">Waiting for next round...</div>
 </div>
 
 <script>
+    let balance = 5000.00;
     let multiplier = 1.00;
     let gameInterval;
     let crashPoint;
     let isGameRunning = false;
     let currentBet = 0;
+    let history = [1.31, 2.54, 1.05, 5.10];
 
-    // 1. ፕሮፌሽናል ክራሽ ፖይንት ማመንጫ (SHA-256 Based Provably Fair System)
+    // Initialize Grid
+    const grid = document.getElementById('grid-container');
+    for(let i=0; i<10; i++) {
+        const v = document.createElement('div');
+        v.className = 'grid-line v-line';
+        v.style.left = (i * 10) + '%';
+        grid.appendChild(v);
+        const h = document.createElement('div');
+        h.className = 'grid-line h-line';
+        h.style.top = (i * 10) + '%';
+        grid.appendChild(h);
+    }
+
+    function adjustBet(dir) {
+        let val = parseFloat(document.getElementById('bet-amount').value);
+        val = Math.max(0.1, val + (dir * 0.1));
+        document.getElementById('bet-amount').value = val.toFixed(2);
+        updateBetDisplay();
+    }
+
+    function setBet(val) {
+        document.getElementById('bet-amount').value = val.toFixed(2);
+        updateBetDisplay();
+    }
+
+    function updateBetDisplay() {
+        const val = document.getElementById('bet-amount').value;
+        document.querySelectorAll('.current-bet-val').forEach(el => el.innerText = val);
+    }
+
     async function generateCrashPoint() {
-        const houseEdge = 0.03; // 3% House Edge
-        
-        // ራንደም ሰርቨር ሲድ (Server Seed)
+        const houseEdge = 0.03;
         const serverSeed = Math.random().toString(36).substring(2) + Date.now().toString(36);
-        // ክላየንት ሲድ (Client Seed - ለምሳሌ የዩዘር አይዲ ወይም ታይም ስታምፕ)
-        const clientSeed = "aviator_client_" + Math.random().toString(36).substring(2);
-        
+        const clientSeed = "aviator_" + Math.random().toString(36).substring(2);
         const encoder = new TextEncoder();
         const data = encoder.encode(serverSeed + clientSeed);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-        
-        // ከሃሹ የመጀመሪያዎቹን 13 ካራክተሮች በመውሰድ ወደ ቁጥር መቀየር (Provably Fair Logic)
         const hashInt = parseInt(hashHex.substring(0, 13), 16);
         const e = Math.pow(2, 52);
-        
-        // 99% የክራሽ ቀመር (Provably Fair Standard)
         const result = Math.floor((100 * e - hashInt) / (e - hashInt)) / 100.0;
-        
-        // በቤቱ ትርፍ መሰረት ማስተካከል
         if (Math.random() < houseEdge) return 1.00;
-        
         return Math.max(1.01, result).toFixed(2);
     }
 
-    // 2. ጨዋታውን ለመጀመር
-    async function startGame() {
+    function startGame() {
         if (isGameRunning) return;
-
         currentBet = parseFloat(document.getElementById('bet-amount').value);
-        if (currentBet <= 0 || isNaN(currentBet)) {
-            alert("እባክዎ ትክክለኛ የገንዘብ መጠን ያስገቡ!");
+        if (currentBet > balance) {
+            alert("Insufficient balance!");
             return;
         }
 
-        // ዝግጅት
+        balance -= currentBet;
+        updateBalance();
+
         isGameRunning = true;
         multiplier = 1.00;
-        crashPoint = await generateCrashPoint();
-        console.log("Provably Fair Crash Point: " + crashPoint);
+        updateUIForStart();
 
+        generateCrashPoint().then(cp => {
+            crashPoint = cp;
+            console.log("Crash at:", crashPoint);
+            runGameLoop();
+        });
+    }
+
+    function updateUIForStart() {
         document.getElementById('bet-btn').style.display = 'none';
-        document.getElementById('cashout-btn').style.display = 'block';
+        document.getElementById('cashout-btn').style.display = 'flex';
+        document.getElementById('flew-away').style.display = 'none';
+        document.getElementById('multiplier').style.display = 'block';
         document.getElementById('multiplier').style.color = 'white';
-        document.getElementById('game-status').innerText = "አውሮፕላኑ እየበረረ ነው...";
+        document.getElementById('game-status').innerText = "Plane is airborne...";
+    }
 
-        // የሩጫ ጊዜ (Animation)
+    function runGameLoop() {
+        const startTime = Date.now();
+        const path = document.getElementById('trace-path');
+        const plane = document.getElementById('plane-container');
+        
         gameInterval = setInterval(() => {
-            multiplier += 0.01;
+            const elapsed = (Date.now() - startTime) / 1000;
+            // Realistic exponential growth
+            multiplier = Math.pow(Math.E, 0.06 * elapsed);
+            
             document.getElementById('multiplier').innerText = multiplier.toFixed(2) + "x";
+            document.getElementById('cashout-amount').innerText = (currentBet * multiplier).toFixed(2) + " USD";
 
-            // አውሮፕላኗን የማንቀሳቀስ ስራ
-            const plane = document.getElementById('plane');
-            let xPos = (multiplier - 1) * 50; // ወደ ቀኝ
-            let yPos = (multiplier - 1) * 30; // ወደ ላይ
-            plane.style.transform = `translate(${xPos}px, -${yPos}px)`;
+            // Update Plane position & Trace
+            const x = Math.min(elapsed * 40, 450);
+            const y = Math.min((multiplier - 1) * 60, 220);
+            plane.style.transform = `translate(${x}px, -${y}px)`;
+            
+            path.setAttribute('d', `M 0 0 Q ${x/2} 0, ${x} ${-y} L ${x} 0 L 0 0 Z`);
 
-            // ክራሽ ካደረገ
             if (multiplier >= crashPoint) {
                 gameOver();
             }
-        }, 80); // ፍጥነቱን እዚህ ማስተካከል ትችላለህ
+        }, 50);
     }
 
-    // 3. ገንዘብ ለማውጣት (Cash Out)
     function cashOut() {
         if (!isGameRunning) return;
-
-        const winAmount = (currentBet * multiplier).toFixed(2);
+        const winAmount = currentBet * multiplier;
+        balance += winAmount;
+        updateBalance();
+        
         clearInterval(gameInterval);
         isGameRunning = false;
-
-        document.getElementById('multiplier').style.color = "#28a745";
-        document.getElementById('game-status').innerText = "አሸንፈዋል! " + winAmount + " ETB";
         
-        resetUI();
+        document.getElementById('multiplier').style.color = "#28a745";
+        document.getElementById('game-status').innerText = `WON! +${winAmount.toFixed(2)} USD`;
+        resetGameUI(false);
     }
 
-    // 4. አውሮፕላኑ ሲያመልጥ (Crash)
     function gameOver() {
         clearInterval(gameInterval);
         isGameRunning = false;
-
-        document.getElementById('multiplier').innerText = "FLEW AWAY!";
-        document.getElementById('multiplier').style.color = "#ff0044";
-        document.getElementById('game-status').innerText = "ተበልተዋል! አውሮፕላኑ አምልጧል።";
-
-        resetUI();
+        
+        document.getElementById('multiplier').style.display = 'none';
+        document.getElementById('flew-away').style.display = 'block';
+        document.getElementById('game-status').innerText = "Better luck next time!";
+        
+        addHistory(crashPoint);
+        resetGameUI(true);
     }
 
-    // 5. በተኖችን ወደ ነበሩበት መመለስ
-    function resetUI() {
+    function resetGameUI(crashed) {
+        document.getElementById('cashout-btn').style.display = 'none';
         setTimeout(() => {
-            document.getElementById('bet-btn').style.display = 'block';
-            document.getElementById('cashout-btn').style.display = 'none';
-            if (!isGameRunning) {
-                const plane = document.getElementById('plane');
-                plane.style.transform = `translate(0px, 0px)`;
-            }
+            document.getElementById('bet-btn').style.display = 'flex';
+            document.getElementById('plane-container').style.transform = 'translate(0,0)';
+            document.getElementById('trace-path').setAttribute('d', '');
+            document.getElementById('multiplier').innerText = "1.00x";
+            document.getElementById('flew-away').style.display = 'none';
+            document.getElementById('multiplier').style.display = 'block';
         }, 3000);
     }
+
+    function updateBalance() {
+        document.getElementById('user-balance').innerText = balance.toFixed(2);
+    }
+
+    function addHistory(val) {
+        history.unshift(parseFloat(val));
+        if(history.length > 6) history.pop();
+        renderHistory();
+    }
+
+    function renderHistory() {
+        const list = document.getElementById('history-list');
+        list.innerHTML = '';
+        history.forEach(h => {
+            const span = document.createElement('span');
+            span.className = `history-item ${h >= 2 ? 'history-mid' : 'history-low'}`;
+            span.innerText = h.toFixed(2) + 'x';
+            list.appendChild(span);
+        });
+    }
+
+    renderHistory();
+    updateBetDisplay();
 </script>
 
 </body>
