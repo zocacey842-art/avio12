@@ -132,6 +132,29 @@
             width: 100px;
             fill: var(--accent-red);
             transform: rotate(-15deg);
+            animation: plane-wobble 2s ease-in-out infinite;
+        }
+
+        @keyframes plane-wobble {
+            0%, 100% { transform: rotate(-15deg) translateY(0px); }
+            50% { transform: rotate(-12deg) translateY(-5px); }
+        }
+
+        .engine-trail {
+            position: absolute;
+            right: 80%;
+            top: 50%;
+            width: 40px;
+            height: 4px;
+            background: linear-gradient(to left, rgba(255, 0, 68, 0.8), transparent);
+            border-radius: 2px;
+            filter: blur(2px);
+            animation: trail-flicker 0.1s infinite;
+        }
+
+        @keyframes trail-flicker {
+            0%, 100% { opacity: 0.6; transform: scaleX(1); }
+            50% { opacity: 1; transform: scaleX(1.2); }
         }
 
         .canvas-overlay {
@@ -304,12 +327,14 @@
         <div id="multiplier">1.00x</div>
         <div id="flew-away">FLEW AWAY!</div>
         
-        <svg id="graph-line">
-            <path d="" fill="rgba(255,0,68,0.2)" stroke="#ff0044" stroke-width="4" id="trace-path" />
+        <svg id="graph-line" style="overflow: visible;">
+            <path d="" fill="none" stroke="rgba(255,0,68,0.3)" stroke-width="8" id="trace-path-glow" style="filter: blur(8px);" />
+            <path d="" fill="none" stroke="#ff0044" stroke-width="4" id="trace-path" />
         </svg>
 
         <div id="plane-container">
             <div id="plane">
+                <div class="engine-trail"></div>
                 <svg class="plane-svg-icon" viewBox="0 0 100 50" xmlns="http://www.w3.org/2000/svg">
                     <!-- Fuselage -->
                     <path d="M20 25 Q 40 15, 80 25 L 85 22 L 85 28 L 80 25 Q 40 35, 20 25" fill="#ff0044" />
@@ -497,27 +522,32 @@
     function runGameLoop() {
         const startTime = Date.now();
         const path = document.getElementById('trace-path');
+        const pathGlow = document.getElementById('trace-path-glow');
         const plane = document.getElementById('plane-container');
         const gameStage = document.getElementById('game-stage');
-        const stageWidth = gameStage.clientWidth - 100;
-        const stageHeight = gameStage.clientHeight - 100;
+        const stageWidth = gameStage.clientWidth - 120;
+        const stageHeight = gameStage.clientHeight - 80;
         
         gameInterval = setInterval(() => {
             const elapsed = (Date.now() - startTime) / 1000;
             // Realistic exponential growth
-            multiplier = Math.pow(Math.E, 0.06 * elapsed);
+            multiplier = Math.pow(Math.E, 0.05 * elapsed);
             
             document.getElementById('multiplier').innerText = multiplier.toFixed(2) + "x";
             document.getElementById('cashout-amount').innerText = (currentBet * multiplier).toFixed(2) + " USD";
 
-            // Improved Plane position & Trace: Parabolic curve starting from bottom
-            const x = Math.min(elapsed * 50, stageWidth);
-            const y = -Math.min((multiplier - 1) * 45, stageHeight);
+            // Professional parabolic curve: starts slow, accelerates upwards
+            const x = Math.min(elapsed * 40, stageWidth);
+            const y = -Math.min(Math.pow(elapsed, 1.5) * 15, stageHeight);
             
-            plane.style.transform = `translate(${x}px, ${y}px)`;
+            // Add a slight tilt to the container based on velocity
+            const tilt = Math.max(-25, -5 - (elapsed * 2));
+            plane.style.transform = `translate(${x}px, ${y}px) rotate(${tilt}deg)`;
             
-            // Draw a smooth quadratic curve for the trace starting from bottom
-            path.setAttribute('d', `M 0 0 Q ${x * 0.4} 0, ${x} ${y} L ${x} 0 L 0 0 Z`);
+            // Draw a smooth quadratic curve for the trace
+            const d = `M 0 0 C ${x * 0.4} 0, ${x * 0.7} ${y * 0.1}, ${x} ${y}`;
+            path.setAttribute('d', d);
+            pathGlow.setAttribute('d', d);
 
             if (multiplier >= crashPoint) {
                 gameOver();
@@ -555,8 +585,9 @@
         document.getElementById('cashout-btn').style.display = 'none';
         setTimeout(() => {
             document.getElementById('bet-btn').style.display = 'flex';
-            document.getElementById('plane-container').style.transform = 'translate(0,0)';
+            document.getElementById('plane-container').style.transform = 'translate(0,0) rotate(0deg)';
             document.getElementById('trace-path').setAttribute('d', '');
+            document.getElementById('trace-path-glow').setAttribute('d', '');
             document.getElementById('multiplier').innerText = "1.00x";
             document.getElementById('flew-away').style.display = 'none';
             document.getElementById('multiplier').style.display = 'block';
