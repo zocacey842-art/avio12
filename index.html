@@ -444,6 +444,9 @@
         const startTime = Date.now();
         const path = document.getElementById('trace-path');
         const plane = document.getElementById('plane-container');
+        const gameStage = document.getElementById('game-stage');
+        const stageWidth = gameStage.clientWidth - 80;
+        const stageHeight = gameStage.clientHeight - 80;
         
         gameInterval = setInterval(() => {
             const elapsed = (Date.now() - startTime) / 1000;
@@ -453,12 +456,16 @@
             document.getElementById('multiplier').innerText = multiplier.toFixed(2) + "x";
             document.getElementById('cashout-amount').innerText = (currentBet * multiplier).toFixed(2) + " USD";
 
-            // Update Plane position & Trace
-            const x = Math.min(elapsed * 40, 450);
-            const y = Math.min((multiplier - 1) * 60, 220);
+            // Improved Plane position & Trace: Smooth parabolic curve
+            // x increases linearly with time, y increases with the multiplier growth
+            const x = Math.min(elapsed * 50, stageWidth);
+            const y = Math.min((multiplier - 1) * 40, stageHeight);
+            
             plane.style.transform = `translate(${x}px, -${y}px)`;
             
-            path.setAttribute('d', `M 0 0 Q ${x/2} 0, ${x} ${-y} L ${x} 0 L 0 0 Z`);
+            // Draw a smooth quadratic curve for the trace
+            // The control point (Q) is adjusted to make the curve look more natural
+            path.setAttribute('d', `M 0 0 Q ${x * 0.4} 0, ${x} ${-y} L ${x} 0 L 0 0 Z`);
 
             if (multiplier >= crashPoint) {
                 gameOver();
